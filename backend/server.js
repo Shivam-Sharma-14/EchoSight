@@ -34,7 +34,7 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
     const language = languageName(request.body.language);
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const requestBody = {
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: [
         {
           inlineData: {
@@ -48,20 +48,34 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
       ],
     };
 
+    const models = [...new Set([
+      process.env.GEMINI_MODEL,
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+    ].filter(Boolean))];
     let result;
     let lastError;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        result = await ai.models.generateContent(requestBody);
-        break;
-      } catch (error) {
-        lastError = error;
-        const status = error?.status || error?.error?.code;
-        const canRetry = status === 429 || status === 500 || status === 503;
-        if (!canRetry || attempt === 2) {
-          throw error;
+
+    for (const model of models) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          result = await ai.models.generateContent({ ...requestBody, model });
+          break;
+        } catch (error) {
+          lastError = error;
+          const status = error?.status || error?.error?.code;
+          const canRetry = status === 429 || status === 500 || status === 503;
+          if (!canRetry) {
+            throw error;
+          }
+          if (attempt === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 800));
+          }
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+      if (result) {
+        break;
       }
     }
 

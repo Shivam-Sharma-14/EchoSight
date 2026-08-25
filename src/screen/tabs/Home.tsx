@@ -55,7 +55,7 @@ const Home: React.FC = () => {
     try {
       await Tts.getInitStatus();
       await Tts.setDefaultLanguage(language === 'hi' ? 'hi-IN' : 'en-IN');
-      Tts.setDefaultRate(0.7);
+      Tts.setDefaultRate(0.38);
       Tts.stop();
       Tts.speak(text);
     } catch (error) {

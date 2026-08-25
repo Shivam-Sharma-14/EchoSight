@@ -33,8 +33,8 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
 
     const language = languageName(request.body.language);
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const result = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-3.7-flash',
+    const requestBody = {
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
       contents: [
         {
           inlineData: {
@@ -43,10 +43,31 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
           },
         },
         {
-          text: `You are EchoSight, a helpful visual assistant for a blind or low-vision user. Describe the image clearly and accurately in ${language}. Mention important objects, text, obstacles, positions, and safety-relevant details. Do not invent details. Keep the response natural and concise enough to speak aloud.`,
+          text: `You are EchoSight, a helpful visual assistant for a blind or low-vision user. Describe the image clearly and accurately in ${language}. Mention important objects, readable text, obstacles, positions, and safety-relevant details. Do not invent details. Keep the response natural and concise enough to speak aloud.`,
         },
       ],
-    });
+    };
+
+    let result;
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        result = await ai.models.generateContent(requestBody);
+        break;
+      } catch (error) {
+        lastError = error;
+        const status = error?.status || error?.error?.code;
+        const canRetry = status === 429 || status === 500 || status === 503;
+        if (!canRetry || attempt === 2) {
+          throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
+
+    if (!result) {
+      throw lastError || new Error('Gemini did not return a response.');
+    }
 
     const generatedText = result.text?.trim();
     if (!generatedText) {
@@ -55,7 +76,13 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
 
     return response.json({ generatedText });
   } catch (error) {
+    const status = error?.status || error?.error?.code;
     console.error('Image analysis failed:', error);
+    if (status === 429 || status === 503) {
+      return response.status(503).json({
+        error: 'Gemini is busy right now. EchoSight will try again automatically; please retry this photo in a moment.',
+      });
+    }
     return response.status(502).json({
       error: 'Image analysis could not be completed. Please try again.',
     });

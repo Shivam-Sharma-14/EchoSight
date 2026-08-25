@@ -105,7 +105,7 @@ const Home: React.FC = () => {
       } as any);
       formData.append('language', language);
 
-      const response = await fetch('https://obscura-1.onrender.com/read-file', {
+      const response = await fetch('https://echosight-gemini-api.onrender.com/read-file', {
         method: 'POST',
         body: formData,
       });

@@ -110,13 +110,20 @@ const Home: React.FC = () => {
         body: formData,
       });
       const responseText = await response.text();
+      let result: any;
 
-      if (!response.ok) {
-        throw new Error(`Analysis service returned ${response.status}. Check your internet connection and try again.`);
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = undefined;
       }
 
-      const result = JSON.parse(responseText);
-      const description = result.generatedText || result.description || result.text;
+      if (!response.ok) {
+        const serverMessage = typeof result?.error === 'string' ? result.error : null;
+        throw new Error(serverMessage || `Analysis service returned ${response.status}. Please try again.`);
+      }
+
+      const description = result?.generatedText || result?.description || result?.text;
       if (typeof description !== 'string' || !description.trim()) {
         throw new Error('The analysis service returned no description.');
       }
@@ -124,7 +131,7 @@ const Home: React.FC = () => {
       setImageAnalysis(description.trim());
       await speakText(description.trim());
     } catch (error) {
-      console.error('Image analysis failed:', error);
+      console.info('Image analysis failed:', error);
       setImageAnalysis(
         error instanceof Error ? error.message : 'Unable to analyze this picture. Please try again.',
       );
@@ -147,7 +154,7 @@ const Home: React.FC = () => {
       closeCamera();
       await analyzeImage(imageUri);
     } catch (error) {
-      console.error('Photo capture failed:', error);
+      console.info('Photo capture failed:', error);
       Alert.alert(
         'Unable to take picture',
         error instanceof Error ? error.message : 'Please try again.',

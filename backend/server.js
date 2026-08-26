@@ -9,8 +9,11 @@ const upload = multer({
 });
 const port = process.env.PORT || 10000;
 
-function languageName(language) {
-  return language === 'hi' ? 'Hindi' : 'English';
+function languageInstruction(language) {
+  const isHindi = String(language || '').toLowerCase().startsWith('hi');
+  return isHindi
+    ? 'Respond only in Hindi written in Devanagari script. Do not use English words or Roman Hindi.'
+    : 'Respond only in clear English.';
 }
 
 app.get('/health', (_request, response) => {
@@ -31,7 +34,7 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
       return response.status(400).json({ error: 'Only image files can be analyzed.' });
     }
 
-    const language = languageName(request.body.language);
+    const outputLanguage = languageInstruction(request.body.language);
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const requestBody = {
       model: 'gemini-3.1-flash-lite',
@@ -43,7 +46,7 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
           },
         },
         {
-          text: `You are EchoSight, a helpful visual assistant for a blind or low-vision user. Describe the image clearly and accurately in ${language}. Mention important objects, readable text, obstacles, positions, and safety-relevant details. Do not invent details. Keep the response natural and concise enough to speak aloud.`,
+          text: `You are EchoSight, a helpful visual assistant for a blind or low-vision user. ${outputLanguage} Describe the image clearly and accurately. Mention important objects, readable text, obstacles, positions, and safety-relevant details. Do not invent details. Keep the response natural and concise enough to speak aloud.`,
         },
       ],
     };

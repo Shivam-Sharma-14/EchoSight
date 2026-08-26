@@ -54,9 +54,19 @@ const Home: React.FC = () => {
   const speakText = async (text: string) => {
     try {
       await Tts.getInitStatus();
-      await Tts.setDefaultLanguage(language === 'hi' ? 'hi-IN' : 'en-IN');
-      Tts.setDefaultRate(0.38);
-      Tts.stop();
+      const speechLanguage = language === 'hi' ? 'hi-IN' : 'en-IN';
+      await Tts.setDefaultLanguage(speechLanguage);
+
+      const voices = await Tts.voices();
+      const matchingVoice = voices.find(voice =>
+        voice.language.toLowerCase().startsWith(language === 'hi' ? 'hi' : 'en-in'),
+      );
+      if (matchingVoice) {
+        await Tts.setDefaultVoice(matchingVoice.id);
+      }
+
+      await Tts.setDefaultRate(0.38);
+      await Tts.stop();
       Tts.speak(text);
     } catch (error) {
       console.warn('Text-to-speech unavailable:', error);

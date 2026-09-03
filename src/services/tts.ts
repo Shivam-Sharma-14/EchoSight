@@ -47,13 +47,24 @@ export async function speakText(text: string, language: SpeechLanguage): Promise
 }
 
 
-// Speak the first prompt without waiting for Android voice discovery.
+// Start speaking straight away, then replay once Android's speech engine is ready.
+// Some devices silently drop the first request while their engine is starting.
 export function speakPromptImmediately(text: string): void {
   void Tts.setDefaultLanguage('en-IN');
   void Tts.setDefaultRate(0.44);
   void Tts.setDefaultPitch(1.0);
   void Tts.stop();
   Tts.speak(text);
+
+  void ensureTtsReady().then(async () => {
+    await Tts.setDefaultLanguage('en-IN');
+    await Tts.setDefaultRate(0.44);
+    await Tts.setDefaultPitch(1.0);
+    await Tts.stop();
+    Tts.speak(text);
+  }).catch(error => {
+    console.warn('Opening prompt speech failed:', error);
+  });
 }
 
 export async function stopSpeaking(): Promise<void> {

@@ -46,6 +46,16 @@ export async function speakText(text: string, language: SpeechLanguage): Promise
   Tts.speak(text);
 }
 
+
+// Speak the first prompt without waiting for Android voice discovery.
+export function speakPromptImmediately(text: string): void {
+  void Tts.setDefaultLanguage('en-IN');
+  void Tts.setDefaultRate(0.44);
+  void Tts.setDefaultPitch(1.0);
+  void Tts.stop();
+  Tts.speak(text);
+}
+
 export async function stopSpeaking(): Promise<void> {
   await Tts.stop();
 }

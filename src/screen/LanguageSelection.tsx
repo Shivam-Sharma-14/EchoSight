@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {useEffect} from 'react';
-import {prepareTts, speakText} from '../services/tts';
+import {prepareTts, speakPromptImmediately} from '../services/tts';
 import {
   StyleSheet,
   View,
@@ -26,9 +26,7 @@ const LanguageSelection: React.FC<{navigation: any}> = ({navigation}) => {
   };
 
   useEffect(() => {
-    speakText('Select language. Hindi or English.', 'en').catch(error => {
-      console.warn('Text-to-speech is unavailable:', error);
-    });
+    speakPromptImmediately('Select language. Hindi or English.');
   }, []);
 
   return (

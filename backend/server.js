@@ -37,7 +37,7 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
     const outputLanguage = languageInstruction(request.body.language);
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const requestBody = {
-      model: 'gemini-2.5-flash-lite',
+      model: 'gemini-3.5-flash-lite',
       contents: [
         {
           inlineData: {
@@ -53,9 +53,8 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
 
     const models = [...new Set([
       process.env.GEMINI_MODEL,
-      'gemini-2.5-flash-lite',
-      'gemini-2.5-flash',
-      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
     ].filter(Boolean))];
     let result;
     let lastError;
@@ -68,7 +67,7 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
         } catch (error) {
           lastError = error;
           const status = error?.status || error?.error?.code;
-          const canRetry = status === 429 || status === 500 || status === 503;
+          const canRetry = status === 404 || status === 429 || status === 500 || status === 503;
           if (!canRetry) {
             throw error;
           }

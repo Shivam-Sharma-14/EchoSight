@@ -12,15 +12,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {Camera, useCameraDevice} from 'react-native-vision-camera';
+import {Camera, useCameraDevice, useCameraFormat} from 'react-native-vision-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Tts from 'react-native-tts';
+import {prepareTts, speakText as speakWithTts, stopSpeaking} from '../../services/tts';
 import {translations} from './localization';
 
 type AppLanguage = keyof typeof translations;
 
 const Home: React.FC = () => {
   const device = useCameraDevice('back');
+  const photoFormat = useCameraFormat(device, [{photoResolution: {width: 1280, height: 720}}]);
   const camera = useRef<Camera>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [language, setLanguage] = useState<AppLanguage>('en');
@@ -51,29 +52,18 @@ const Home: React.FC = () => {
     initialize().catch(error => console.warn('Initialization failed:', error));
   }, []);
 
+  useEffect(() => {
+    void prepareTts(language);
+  }, [language]);
+
   const speakText = async (text: string) => {
     try {
-      await Tts.getInitStatus();
-      const speechLanguage = language === 'hi' ? 'hi-IN' : 'en-IN';
-      await Tts.setDefaultLanguage(speechLanguage);
-
-      const voices = await Tts.voices();
-      const matchingVoice = voices.find(voice =>
-        voice.language.toLowerCase().startsWith(language === 'hi' ? 'hi' : 'en-in'),
-      );
-      if (matchingVoice) {
-        await Tts.setDefaultVoice(matchingVoice.id);
-      }
-
-      await Tts.setDefaultRate(0.38);
-      await Tts.stop();
-      Tts.speak(text);
+      await speakWithTts(text, language);
     } catch (error) {
       console.warn('Text-to-speech unavailable:', error);
       Alert.alert('Voice unavailable', 'The description is still available to read on screen.');
     }
   };
-
   const openCamera = async () => {
     const currentPermission = await Camera.getCameraPermissionStatus();
     const permission = currentPermission === 'granted'
@@ -158,7 +148,7 @@ const Home: React.FC = () => {
 
     setIsCapturing(true);
     try {
-      const photo = await camera.current.takePhoto();
+      const photo = await camera.current.takePhoto({flash: 'off', enableShutterSound: false});
       const imageUri = Platform.OS === 'android' ? `file://${photo.path}` : photo.path;
       setImageData(imageUri);
       closeCamera();
@@ -175,7 +165,7 @@ const Home: React.FC = () => {
   };
 
   const closePreview = () => {
-    Tts.stop();
+    void stopSpeaking();
     setShowImageModal(false);
     setImageData('');
     setImageAnalysis('');
@@ -213,8 +203,10 @@ const Home: React.FC = () => {
           ref={camera}
           style={StyleSheet.absoluteFill}
           device={device}
+          format={photoFormat}
           isActive
           photo
+          photoQualityBalance="speed"
           onInitialized={() => setCameraReady(true)}
           onError={error => {
             console.warn('Camera error:', error);

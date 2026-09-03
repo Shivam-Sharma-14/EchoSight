@@ -37,7 +37,7 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
     const outputLanguage = languageInstruction(request.body.language);
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const requestBody = {
-      model: 'gemini-3.1-flash-lite',
+      model: 'gemini-2.5-flash-lite',
       contents: [
         {
           inlineData: {
@@ -46,16 +46,15 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
           },
         },
         {
-          text: `You are EchoSight, a helpful visual assistant for a blind or low-vision user. ${outputLanguage} Describe the image clearly and accurately. Mention important objects, readable text, obstacles, positions, and safety-relevant details. Do not invent details. Keep the response natural and concise enough to speak aloud.`,
+          text: `You are EchoSight, a helpful visual assistant for a blind or low-vision user. ${outputLanguage} Give a concise, useful description. Mention only the most important objects, readable text, obstacles, positions, and immediate safety details. Do not invent details.`,
         },
       ],
     };
 
     const models = [...new Set([
       process.env.GEMINI_MODEL,
-      'gemini-3.1-flash-lite',
-      'gemini-2.5-flash',
       'gemini-2.5-flash-lite',
+      'gemini-3.1-flash-lite',
     ].filter(Boolean))];
     let result;
     let lastError;

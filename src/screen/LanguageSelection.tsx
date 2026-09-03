@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {useEffect} from 'react';
-import Tts from 'react-native-tts';
+import {prepareTts, speakText} from '../services/tts';
 import {
   StyleSheet,
   View,
@@ -16,7 +16,8 @@ const LanguageSelection: React.FC<{navigation: any}> = ({navigation}) => {
     setLoading(true);
     try {
       await AsyncStorage.setItem('userLanguage', lang);
-      navigation.navigate('Home'); // Navigate to Home after setting language
+      void prepareTts(lang as 'en' | 'hi');
+      navigation.navigate('Home');
     } catch (error) {
       console.error('Error setting language:', error);
     } finally {
@@ -25,14 +26,9 @@ const LanguageSelection: React.FC<{navigation: any}> = ({navigation}) => {
   };
 
   useEffect(() => {
-    Tts.getInitStatus()
-      .then(() => {
-        Tts.setDefaultRate(0.5);
-        Tts.speak('Select language: Hindi or English.');
-      })
-      .catch(error => {
-        console.warn('Text-to-speech is unavailable:', error);
-      });
+    speakText('Select language. Hindi or English.', 'en').catch(error => {
+      console.warn('Text-to-speech is unavailable:', error);
+    });
   }, []);
 
   return (

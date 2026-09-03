@@ -54,13 +54,14 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
     const models = [...new Set([
       process.env.GEMINI_MODEL,
       'gemini-2.5-flash-lite',
+      'gemini-2.5-flash',
       'gemini-3.1-flash-lite',
     ].filter(Boolean))];
     let result;
     let lastError;
 
     for (const model of models) {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
           result = await ai.models.generateContent({ ...requestBody, model });
           break;
@@ -71,8 +72,8 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
           if (!canRetry) {
             throw error;
           }
-          if (attempt === 0) {
-            await new Promise((resolve) => setTimeout(resolve, 800));
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 900 * (attempt + 1)));
           }
         }
       }

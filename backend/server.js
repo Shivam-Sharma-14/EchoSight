@@ -35,6 +35,10 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
     }
 
     const outputLanguage = languageInstruction(request.body.language);
+    const targetObject = typeof request.body.targetObject === 'string' ? request.body.targetObject.trim().slice(0, 60) : '';
+    const finderInstruction = targetObject
+      ? ` The user is trying to find a ${targetObject}. State clearly whether it is visible and guide them left, centre, or right. If it is not visible, say so and suggest one slow camera movement.`
+      : '';
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const requestBody = {
       model: 'gemini-3.5-flash-lite',
@@ -46,7 +50,7 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
           },
         },
         {
-          text: `You are EchoSight, a helpful visual assistant for a blind or low-vision user. ${outputLanguage} Give a concise, useful description. Mention only the most important objects, readable text, obstacles, positions, and immediate safety details. Do not invent details.`,
+          text: `You are EchoSight, a helpful visual assistant for a blind or low-vision user. ${outputLanguage} Give a concise, useful description. Mention only the most important objects, readable text, obstacles, positions, and immediate safety details. Do not invent details.${finderInstruction}`,
         },
       ],
     };

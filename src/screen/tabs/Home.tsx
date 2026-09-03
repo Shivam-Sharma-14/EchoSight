@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Vibration,
   View,
 } from 'react-native';
 import {Camera, useCameraDevice, useCameraFormat} from 'react-native-vision-camera';
@@ -32,6 +33,8 @@ const Home: React.FC = () => {
   const [cameraReady, setCameraReady] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [captureMode, setCaptureMode] = useState<'describe' | 'find'>('describe');
+  const [targetObject, setTargetObject] = useState('');
 
   useEffect(() => {
     const initialize = async () => {
@@ -64,7 +67,9 @@ const Home: React.FC = () => {
       Alert.alert('Voice unavailable', 'The description is still available to read on screen.');
     }
   };
-  const openCamera = async () => {
+  const openCamera = async (mode: 'describe' | 'find' = 'describe', target = '') => {
+    setCaptureMode(mode);
+    setTargetObject(target);
     const currentPermission = await Camera.getCameraPermissionStatus();
     const permission = currentPermission === 'granted'
       ? currentPermission
@@ -104,6 +109,9 @@ const Home: React.FC = () => {
         name: 'photo.jpg',
       } as any);
       formData.append('language', language);
+      if (captureMode === 'find' && targetObject) {
+        formData.append('targetObject', targetObject);
+      }
 
       const response = await fetch('https://echosight-gemini-api.onrender.com/read-file', {
         method: 'POST',
@@ -128,8 +136,12 @@ const Home: React.FC = () => {
         throw new Error('The analysis service returned no description.');
       }
 
-      setImageAnalysis(description.trim());
-      await speakText(description.trim());
+      const cleanDescription = description.trim();
+      setImageAnalysis(cleanDescription);
+      if (captureMode === 'find' && /\b(center|centre|बीच)\b/i.test(cleanDescription)) {
+        Vibration.vibrate([0, 120, 70, 120]);
+      }
+      await speakText(cleanDescription);
     } catch (error) {
       console.info('Image analysis failed:', error);
       setImageAnalysis(
@@ -174,22 +186,6 @@ const Home: React.FC = () => {
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 800);
-  };
-
-  const handleBoxPress = (position: string) => {
-    Alert.alert(translations[language].pressBox.replace('{position}', position));
-  };
-
-  const openContacts = () => {
-    Linking.openURL(Platform.OS === 'ios' ? 'mailto:' : 'content://contacts/people/').catch(
-      () => Alert.alert('Contacts unavailable', 'Could not open the contacts app.'),
-    );
-  };
-
-  const openMessaging = () => {
-    Linking.openURL('sms:+916230757220').catch(
-      () => Alert.alert('Messages unavailable', 'Could not open the messaging app.'),
-    );
   };
 
   if (device == null) {
@@ -248,26 +244,24 @@ const Home: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.actionGrid}>
-          <TouchableOpacity style={styles.actionCard} onPress={() => handleBoxPress('Voice help')}>
-            <View style={[styles.iconCircle, styles.voiceIconCircle]}><Image source={require('../../assets/microphone-black-shape.png')} style={styles.actionIcon} /></View>
-            <Text style={styles.actionTitle}>Voice help</Text><Text style={styles.actionDescription}>Listen for guidance</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCard} onPress={openMessaging}>
-            <View style={[styles.iconCircle, styles.messageIconCircle]}><Image source={require('../../assets/chat.png')} style={styles.actionIcon} /></View>
-            <Text style={styles.actionTitle}>Messages</Text><Text style={styles.actionDescription}>Reach someone quickly</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCard} onPress={() => handleBoxPress('QR scanner')}>
-            <View style={[styles.iconCircle, styles.qrIconCircle]}><Image source={require('../../assets/qr-code.png')} style={styles.actionIcon} /></View>
-            <Text style={styles.actionTitle}>Scan QR</Text><Text style={styles.actionDescription}>Read a code aloud</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCard} onPress={openContacts}>
-            <View style={[styles.iconCircle, styles.contactIconCircle]}><Image source={require('../../assets/phone.png')} style={styles.actionIcon} /></View>
-            <Text style={styles.actionTitle}>Contacts</Text><Text style={styles.actionDescription}>Call your support circle</Text>
-          </TouchableOpacity>
+        <View style={styles.finderPanel}>
+          <Text style={styles.finderEyebrow}>FIND MY OBJECT</Text>
+          <Text style={styles.finderTitle}>What are you looking for?</Text>
+          <Text style={styles.finderDescription}>Choose an item, point the camera, and EchoSight will guide you.</Text>
+          <View style={styles.objectGrid}>
+            {['Bottle', 'Chair', 'Door', 'Phone', 'Bag', 'Person'].map(object => (
+              <TouchableOpacity
+                key={object}
+                accessibilityRole="button"
+                accessibilityLabel={`Find ${object}`}
+                style={styles.objectButton}
+                onPress={() => openCamera('find', object)}>
+                <Text style={styles.objectButtonText}>{object}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-
-        <TouchableOpacity style={styles.captureButtonContainer} onPress={openCamera}>
+        <TouchableOpacity style={styles.captureButtonContainer} onPress={() => openCamera()}>
           <View style={styles.captureButton}>
             <Text style={styles.captureEyebrow}>AI VISION</Text>
             <Text style={styles.captureText}>{translations[language].openCamera}</Text>
@@ -292,7 +286,7 @@ const Home: React.FC = () => {
                 <TouchableOpacity style={styles.listenButton} onPress={() => speakText(imageAnalysis)}>
                   <Text style={styles.listenButtonText}>Read aloud</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.retakeButton} onPress={() => { closePreview(); openCamera(); }}>
+                <TouchableOpacity style={styles.retakeButton} onPress={() => { closePreview(); openCamera(captureMode, targetObject); }}>
                   <Text style={styles.retakeButtonText}>Take another</Text>
                 </TouchableOpacity>
               </View>
@@ -329,6 +323,13 @@ const styles = StyleSheet.create({
   actionIcon: {width: 22, height: 22, tintColor: '#082F49'},
   actionTitle: {color: '#FFFFFF', fontSize: 16, fontWeight: '800', marginBottom: 5},
   actionDescription: {color: '#E1EDF5', fontSize: 12, fontWeight: '500', lineHeight: 17},
+  finderPanel: {backgroundColor: 'rgba(5, 30, 55, 0.72)', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.36)', padding: 20, marginBottom: 18},
+  finderEyebrow: {color: '#5EEAD4', fontSize: 11, fontWeight: '800', letterSpacing: 1.3, marginBottom: 7},
+  finderTitle: {color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginBottom: 7},
+  finderDescription: {color: '#D7EAF4', fontSize: 14, fontWeight: '600', lineHeight: 20, marginBottom: 18},
+  objectGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
+  objectButton: {width: '30%', minWidth: 88, flexGrow: 1, paddingVertical: 13, paddingHorizontal: 8, borderRadius: 14, backgroundColor: 'rgba(45, 212, 191, 0.2)', borderWidth: 1, borderColor: 'rgba(94, 234, 212, 0.7)', alignItems: 'center'},
+  objectButtonText: {color: '#FFFFFF', fontSize: 14, fontWeight: '800'},
   captureButtonContainer: {marginTop: 'auto', padding: 18, backgroundColor: '#F97316', borderRadius: 24},
   captureButton: {alignItems: 'center'},
   captureEyebrow: {color: '#FFF2E6', fontSize: 11, fontWeight: '800', letterSpacing: 1.3, marginBottom: 4},

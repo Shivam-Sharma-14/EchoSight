@@ -10,7 +10,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  Vibration,
   View,
 } from 'react-native';
 import {Camera, useCameraDevice, useCameraFormat} from 'react-native-vision-camera';
@@ -33,8 +32,6 @@ const Home: React.FC = () => {
   const [cameraReady, setCameraReady] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [captureMode, setCaptureMode] = useState<'describe' | 'find'>('describe');
-  const [targetObject, setTargetObject] = useState('');
 
   useEffect(() => {
     const initialize = async () => {
@@ -67,9 +64,7 @@ const Home: React.FC = () => {
       Alert.alert('Voice unavailable', 'The description is still available to read on screen.');
     }
   };
-  const openCamera = async (mode: 'describe' | 'find' = 'describe', target = '') => {
-    setCaptureMode(mode);
-    setTargetObject(target);
+  const openCamera = async () => {
     const currentPermission = await Camera.getCameraPermissionStatus();
     const permission = currentPermission === 'granted'
       ? currentPermission
@@ -109,9 +104,6 @@ const Home: React.FC = () => {
         name: 'photo.jpg',
       } as any);
       formData.append('language', language);
-      if (captureMode === 'find' && targetObject) {
-        formData.append('targetObject', targetObject);
-      }
 
       const response = await fetch('https://echosight-gemini-api.onrender.com/read-file', {
         method: 'POST',
@@ -138,9 +130,6 @@ const Home: React.FC = () => {
 
       const cleanDescription = description.trim();
       setImageAnalysis(cleanDescription);
-      if (captureMode === 'find' && /\b(center|centre|बीच)\b/i.test(cleanDescription)) {
-        Vibration.vibrate([0, 120, 70, 120]);
-      }
       await speakText(cleanDescription);
     } catch (error) {
       console.info('Image analysis failed:', error);
@@ -244,23 +233,6 @@ const Home: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.finderPanel}>
-          <Text style={styles.finderEyebrow}>FIND MY OBJECT</Text>
-          <Text style={styles.finderTitle}>What are you looking for?</Text>
-          <Text style={styles.finderDescription}>Choose an item, point the camera, and EchoSight will guide you.</Text>
-          <View style={styles.objectGrid}>
-            {['Bottle', 'Chair', 'Door', 'Phone', 'Bag', 'Person'].map(object => (
-              <TouchableOpacity
-                key={object}
-                accessibilityRole="button"
-                accessibilityLabel={`Find ${object}`}
-                style={styles.objectButton}
-                onPress={() => openCamera('find', object)}>
-                <Text style={styles.objectButtonText}>{object}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
         <TouchableOpacity style={styles.captureButtonContainer} onPress={() => openCamera()}>
           <View style={styles.captureButton}>
             <Text style={styles.captureEyebrow}>AI VISION</Text>
@@ -286,7 +258,7 @@ const Home: React.FC = () => {
                 <TouchableOpacity style={styles.listenButton} onPress={() => speakText(imageAnalysis)}>
                   <Text style={styles.listenButtonText}>Read aloud</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.retakeButton} onPress={() => { closePreview(); openCamera(captureMode, targetObject); }}>
+                <TouchableOpacity style={styles.retakeButton} onPress={() => { closePreview(); openCamera(); }}>
                   <Text style={styles.retakeButtonText}>Take another</Text>
                 </TouchableOpacity>
               </View>
@@ -323,17 +295,10 @@ const styles = StyleSheet.create({
   actionIcon: {width: 22, height: 22, tintColor: '#082F49'},
   actionTitle: {color: '#FFFFFF', fontSize: 16, fontWeight: '800', marginBottom: 5},
   actionDescription: {color: '#E1EDF5', fontSize: 12, fontWeight: '500', lineHeight: 17},
-  finderPanel: {backgroundColor: 'rgba(5, 30, 55, 0.72)', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.36)', padding: 20, marginBottom: 18},
-  finderEyebrow: {color: '#5EEAD4', fontSize: 11, fontWeight: '800', letterSpacing: 1.3, marginBottom: 7},
-  finderTitle: {color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginBottom: 7},
-  finderDescription: {color: '#D7EAF4', fontSize: 14, fontWeight: '600', lineHeight: 20, marginBottom: 18},
-  objectGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
-  objectButton: {width: '30%', minWidth: 88, flexGrow: 1, paddingVertical: 13, paddingHorizontal: 8, borderRadius: 14, backgroundColor: 'rgba(45, 212, 191, 0.2)', borderWidth: 1, borderColor: 'rgba(94, 234, 212, 0.7)', alignItems: 'center'},
-  objectButtonText: {color: '#FFFFFF', fontSize: 14, fontWeight: '800'},
-  captureButtonContainer: {marginTop: 'auto', padding: 18, backgroundColor: '#F97316', borderRadius: 24},
+  captureButtonContainer: {marginTop: 'auto', marginBottom: 'auto', paddingVertical: 42, paddingHorizontal: 24, backgroundColor: '#F97316', borderRadius: 32, shadowColor: '#000000', shadowOpacity: 0.28, shadowRadius: 14, elevation: 8},
   captureButton: {alignItems: 'center'},
-  captureEyebrow: {color: '#FFF2E6', fontSize: 11, fontWeight: '800', letterSpacing: 1.3, marginBottom: 4},
-  captureText: {color: '#FFFFFF', fontSize: 21, fontWeight: '800'},
+  captureEyebrow: {color: '#FFF2E6', fontSize: 14, fontWeight: '800', letterSpacing: 1.3, marginBottom: 4},
+  captureText: {color: '#FFFFFF', fontSize: 30, fontWeight: '800'},
   cameraScreen: {flex: 1, backgroundColor: '#000000'},
   shutterButton: {width: 68, height: 68, borderRadius: 34, backgroundColor: '#F97316', position: 'absolute', bottom: 42, alignSelf: 'center', justifyContent: 'center', alignItems: 'center'},
   shutterDisabled: {opacity: 0.55},

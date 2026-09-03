@@ -52,7 +52,6 @@ app.post('/read-file', upload.single('file'), async (request, response) => {
     };
 
     const models = [...new Set([
-      process.env.GEMINI_MODEL,
       'gemini-3.5-flash-lite',
       'gemini-3.5-flash',
     ].filter(Boolean))];
